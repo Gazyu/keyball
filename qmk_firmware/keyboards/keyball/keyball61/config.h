@@ -46,6 +46,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 // RGB LED settings
 #define RGB_DI_PIN          D3
 #ifdef RGBLIGHT_ENABLE
+#    define RGBLIGHT_LAYERS
+#    define RGBLIGHT_MAX_LAYERS 4
 #    define RGBLED_NUM      74
 #    define RGBLED_SPLIT    { 37, 37 }
 #    ifndef RGBLIGHT_LIMIT_VAL
