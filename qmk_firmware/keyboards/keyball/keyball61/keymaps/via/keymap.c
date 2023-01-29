@@ -20,6 +20,127 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "quantum.h"
 
+// トラックボールを移動するとマウスレイヤーに自動遷移する機能ここから
+// https://zenn.dev/takashicompany/articles/69b87160cda4b9
+// ここを参考にさせていただいている
+// 参考元との違いは
+// 1. 時間経過によるレイヤーの無効化をしない
+// 2. スクロールモードへの自動移行は行わない
+
+enum click_state {
+    NONE = 0,
+    WAITING,    // マウスレイヤーが有効になるのを待つ。 Wait for mouse layer to activate.
+    MOUSELAYER
+};
+
+
+enum click_state state;     // 現在のクリック入力受付の状態 Current click input reception status
+uint16_t click_timer;       // タイマー。状態に応じて時間で判定する。 Timer. Time to determine the state of the system.
+int16_t to_clickable_movement = 50;
+
+const uint16_t mouse_layer = 2;   // マウス入力が可能になった際に有効になるレイヤー。Layers enabled when mouse input is enabled
+
+int16_t mouse_movement;
+
+// クリック用のレイヤーを有効にする。　Enable layers for clicks
+void enable_mouse_layer(void) {
+    layer_on(mouse_layer);
+    click_timer = timer_read();
+    state = MOUSELAYER;
+}
+
+// クリック用のレイヤーを無効にする。 Disable layers for clicks.
+void disable_mouse_layer(void) {
+    state = NONE;
+    layer_off(mouse_layer);
+}
+
+// 自前の絶対数を返す関数。 Functions that return absolute numbers.
+int16_t my_abs(int16_t num) {
+    if (num < 0) {
+        num = -num;
+    }
+
+    return num;
+}
+
+bool process_record_user(uint16_t keycode, keyrecord_t *record) {
+
+    switch (keycode) {
+        case KC_BTN1:
+        case KC_BTN2:
+        case KC_BTN3:
+        case KC_LEFT:
+        case KC_RIGHT:
+        case KC_UP:
+        case KC_DOWN:
+        case S(KC_LEFT):
+        case S(KC_RIGHT):
+        case S(KC_UP):
+        case S(KC_DOWN):
+        case G(KC_LEFT):
+        case G(KC_RIGHT):
+        case G(KC_UP):
+        case G(KC_DOWN):
+        case A(KC_LEFT):
+        case A(KC_RIGHT):
+        case A(KC_UP):
+        case A(KC_DOWN):
+        case C(KC_LEFT):
+        case C(KC_RIGHT):
+        case C(KC_UP):
+        case C(KC_DOWN):
+        case SCRL_MO:
+        case SCRL_TO:
+        {
+            // マウスボタン及びLayer2に居るボタンを押された場合には何もしない
+            return true;
+        }
+         default:
+          // Layer2以外のボタン（KC_TRANS等）が押された場合にはマウスモードを終わる
+            if  (record->event.pressed) {
+                disable_mouse_layer();
+            }
+    }
+    return true;
+}
+
+
+report_mouse_t pointing_device_task_user(report_mouse_t mouse_report) {
+    int16_t current_x = mouse_report.x;
+    int16_t current_y = mouse_report.y;
+
+    if (current_x != 0 || current_y != 0) {
+        if (state == WAITING) {
+            mouse_movement += my_abs(current_x) + my_abs(current_y);
+            if (mouse_movement >= to_clickable_movement)
+            {
+                mouse_movement = 0;
+                enable_mouse_layer();
+            }
+        } else if (state == NONE){
+            click_timer = timer_read();
+            state = WAITING;
+            mouse_movement = 0;
+        }
+    }
+    else
+    {
+        if (state == WAITING) {
+            if (timer_elapsed(click_timer) > 50) {
+                mouse_movement = 0;
+                state = NONE;
+            }
+        } else {
+            mouse_movement = 0;
+        }
+    }
+
+    return mouse_report;
+}
+
+// トラックボールを移動するとマウスレイヤーに自動遷移する機能ここまで
+
 // clang-format off
 const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
   [0] = LAYOUT_universal(
