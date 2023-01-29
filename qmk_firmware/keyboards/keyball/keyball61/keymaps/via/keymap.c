@@ -89,6 +89,10 @@ layer_state_t default_layer_state_set_user(layer_state_t state) {
     return state;
 }
 
+void keyboard_post_init_user(void) {
+    rgblight_layers = my_rgb_layers;
+    rgblight_set_layer_state(0, true);
+}
 
 #ifdef OLED_ENABLE
 
